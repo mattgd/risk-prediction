@@ -172,6 +172,7 @@ def initialize_decision_point(data, column):
 	counts = groups.size()
 	means = groups.mean()
 
+	# TODO: What do we do here if there's no responses with 'a' or 'b'?
 	s_a = means['a'] if 'a' in means else 1
 	s_b = means['b'] if 'b' in means else 1
 	n_a = counts['a'] if 'a' in counts else 1
@@ -185,7 +186,6 @@ def initialize_decision_point(data, column):
 		base_rate = n_b / (n_a + n_b)
 
 	return base_rate, risk_sensitivity
-
 
 if __name__ == '__main__':
 	simulate()
