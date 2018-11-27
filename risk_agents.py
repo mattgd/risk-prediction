@@ -5,6 +5,8 @@ import pandas
 import random
 import statistics
 
+# TODO: Create class for ML and Agent methods
+
 RISK_SCORE_MIN = 10
 RISK_SCORE_MAX = 47
 NUM_DECISION_POINTS = 9
@@ -83,8 +85,15 @@ def preprocess(file_name):
 			row = [(int(row[idx]) if idx == survey_score_col_idx else row[idx]) for idx in range(len(row)) if idx in new_columns.values()]
 			row = categorize_decisions(row)
 			data.append(row)
+	
+	data = pandas.DataFrame(data=data, columns=new_columns)
 
-	return pandas.DataFrame(data=data, columns=new_columns)
+	# Drop columns where all values are the same
+	nunique = data.apply(pandas.Series.nunique)
+	cols_to_drop = nunique[nunique == 1].index
+	data = data.drop(cols_to_drop, axis=1)
+
+	return data
 
 def get_possible_paths(num_decision_points):
 	"""
@@ -171,12 +180,11 @@ def initialize_decision_point(data, column):
 	groups = data.groupby(column)[SURVEY_SCORE_COLUMN]
 	counts = groups.size()
 	means = groups.mean()
-
-	# TODO: What do we do here if there's no responses with 'a' or 'b'?
-	s_a = means['a'] if 'a' in means else 1
-	s_b = means['b'] if 'b' in means else 1
-	n_a = counts['a'] if 'a' in counts else 1
-	n_b = counts['b'] if 'b' in counts else 1
+	
+	s_a = means['a']
+	s_b = means['b']
+	n_a = counts['a']
+	n_b = counts['b']
 
 	if s_a > s_b:
 		risk_sensitivity = s_a / s_b
@@ -184,6 +192,8 @@ def initialize_decision_point(data, column):
 	else:
 		risk_sensitivity = s_b / s_a
 		base_rate = n_b / (n_a + n_b)
+
+	print('Base rate:', base_rate, 'Risk sensitivity:', risk_sensitivity)
 
 	return base_rate, risk_sensitivity
 
