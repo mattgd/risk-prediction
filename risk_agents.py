@@ -125,7 +125,7 @@ def simulate(file_name='survey_responses.csv', agent_max=DEFAULT_AGENT_MAX):
         path = ''
 
         for decision_point in decision_points.values():
-            base_rate, risk_sensitivity = decision_point
+            base_rate, risk_sensitivity, toggled = decision_point
             choice = calculate_risk_tolerance(
                 base_rate, risk_sensitivity, neutral_state, agent_risk_tolerance
             )
@@ -183,11 +183,13 @@ def initialize_decision_point(data, column):
     if s_a > s_b:
         risk_sensitivity = s_a / s_b
         base_rate = n_a / (n_a + n_b)
+        toggled = True
     else:
         risk_sensitivity = s_b / s_a
         base_rate = n_b / (n_a + n_b)
+        toggled = False
 
-    return base_rate, risk_sensitivity
+    return base_rate, risk_sensitivity, toggled
 
 if __name__ == '__main__':
     simulate()
