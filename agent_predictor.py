@@ -1,5 +1,6 @@
 import json
 import numpy as np
+import pandas as pd
 import random
 from preprocessor import SURVEY_SCORE_COLUMN
 import statistics
@@ -50,7 +51,7 @@ class AgentPredictor:
 
             self.predictions[path].append(agent_risk_tolerance)
 
-    def predict(self, predictions, user_path):
+    def predict(self, user_path):
         """
         Predict the user's risk tolerance based on the agent data.
 
@@ -58,7 +59,13 @@ class AgentPredictor:
         :param user_path: The user's path (a binary string)
         :returns: The predicted risk tolerance score
         """
-        return np.mean(self.predictions[user_path])
+        predictions = []
+
+        for row in user_path.iterrows():
+            user_path_str = row[1].str.cat(sep='')
+            predictions.append(np.mean(self.predictions[user_path_str]))
+        
+        return predictions
 
     def initialize_decision_point(self, data, column):
         """

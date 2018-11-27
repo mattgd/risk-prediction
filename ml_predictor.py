@@ -19,4 +19,4 @@ class MlPredictor:
     :param user_path: the path the user took as dataframe
     """
     def predict(self, user_path):
-        return list(self.predictor.predict(user_path.replace('a',0).replace('b',1)))
+        return list(self.predictor.predict(user_path.replace('a', 0).replace('b', 1)))

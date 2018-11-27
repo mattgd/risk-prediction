@@ -80,8 +80,8 @@ def preprocess(file_name):
     data = pandas.DataFrame(data=data, columns=headers)
 
     # Drop columns where all values are the same
-    nunique = data.apply(pandas.Series.nunique)
-    cols_to_drop = nunique[nunique == 1].index
-    data = data.drop(cols_to_drop, axis=1)
+    #nunique = data.apply(pandas.Series.nunique)
+    #cols_to_drop = nunique[nunique == 1].index
+    #data = data.drop(cols_to_drop, axis=1)
 
     return data
