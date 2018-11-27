@@ -4,10 +4,11 @@ import pandas as pd
 import random
 from preprocessor import SURVEY_SCORE_COLUMN
 import statistics
+from scipy.stats import norm
 
 RISK_SCORE_MIN = 10
 RISK_SCORE_MAX = 47
-DEFAULT_AGENT_MAX = 512
+DEFAULT_AGENT_MAX = 100000
 
 class AgentPredictor:
     """
@@ -19,6 +20,7 @@ class AgentPredictor:
         self.decision_cols = [col for col in list(data) if col != SURVEY_SCORE_COLUMN]
         self.num_decision_points = len(self.decision_cols)
         self.predictions = {path: [] for path in self.get_possible_paths(self.num_decision_points)}
+        self.toggles = []
         self.simulate(data)
 
     def simulate(self, data, agent_max=DEFAULT_AGENT_MAX):
@@ -28,8 +30,9 @@ class AgentPredictor:
         :param data: preprocessed data frame
         :param agent_max: The number of agents to simulate
         """
-        survey_scores = map(int, data[SURVEY_SCORE_COLUMN].tolist())
+        survey_scores = [int(x) for x in data[SURVEY_SCORE_COLUMN].tolist()]
         neutral_state = statistics.median(survey_scores)
+        std = statistics.stdev(survey_scores)
 
         # Initialize decision points for all agents
         decision_points = {}
@@ -37,12 +40,13 @@ class AgentPredictor:
             decision_points[decision] = self.initialize_decision_point(data, decision)
 
         # Simulate agent paths where each path key is a binary String representing the decision
-        for _ in range(agent_max):
-            agent_risk_tolerance = random.randint(RISK_SCORE_MIN, RISK_SCORE_MAX + 1)
+        agents = norm.rvs(size=agent_max, loc=neutral_state, scale=std)
+        for agent_risk_tolerance in agents:
             path = ''
 
             for decision_point in decision_points.values():
                 base_rate, risk_sensitivity, toggled = decision_point
+                self.toggles.append(toggled)
                 choice = self.calculate_risk_tolerance(
                     base_rate, risk_sensitivity, neutral_state, agent_risk_tolerance
                 )
@@ -59,11 +63,20 @@ class AgentPredictor:
         :param user_path: The user's path (a binary string)
         :returns: The predicted risk tolerance score
         """
+        for i in range(len(user_path.columns)):
+            if self.toggles[i]:
+                user_path_coded = user_path.replace('a', '1').replace('b', '0')
+            else:
+                user_path_coded = user_path.replace('a', '0').replace('b', '1')
+
         predictions = []
 
-        for row in user_path.iterrows():
+        for row in user_path_coded.iterrows():
             user_path_str = row[1].str.cat(sep='')
-            predictions.append(np.mean(self.predictions[user_path_str]))
+            if not self.predictions[user_path_str]:
+                predictions.append('Could not compute')
+            else:
+                predictions.append(np.mean(self.predictions[user_path_str]))
         
         return predictions
 
@@ -120,7 +133,7 @@ class AgentPredictor:
         """
         agent_risk_factor = agent_risk_tolerance - neutral_state
         decision_risk_factor = risk_sensitivity - 1
-        risk_adjustment = agent_risk_factor * decision_risk_factor
+        risk_adjustment = agent_risk_factor * decision_risk_factor / 2
         probability_1 = base_rate + risk_adjustment
 
         return 1 if probability_1 < random.random() else 0
