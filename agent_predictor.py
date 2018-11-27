@@ -6,7 +6,6 @@ import statistics
 
 RISK_SCORE_MIN = 10
 RISK_SCORE_MAX = 47
-NUM_DECISION_POINTS = 9
 DEFAULT_AGENT_MAX = 512
 
 class AgentPredictor:
@@ -16,7 +15,9 @@ class AgentPredictor:
     :param data: preprocessed training data
     """
     def __init__(self, data):
-        self.predictions = {path: [] for path in self.get_possible_paths(NUM_DECISION_POINTS)}
+        self.decision_cols = [col for col in list(data) if col != SURVEY_SCORE_COLUMN]
+        self.num_decision_points = len(self.decision_cols)
+        self.predictions = {path: [] for path in self.get_possible_paths(self.num_decision_points)}
         self.simulate(data)
 
     def simulate(self, data, agent_max=DEFAULT_AGENT_MAX):
@@ -31,12 +32,10 @@ class AgentPredictor:
 
         # Initialize decision points for all agents
         decision_points = {}
-        decision_cols = [col for col in list(data) if col != SURVEY_SCORE_COLUMN]
-        for decision in decision_cols:
+        for decision in self.decision_cols:
             decision_points[decision] = self.initialize_decision_point(data, decision)
 
         # Simulate agent paths where each path key is a binary String representing the decision
-        predictions = {path: [] for path in self.get_possible_paths(NUM_DECISION_POINTS)}
         for _ in range(agent_max):
             agent_risk_tolerance = random.randint(RISK_SCORE_MIN, RISK_SCORE_MAX + 1)
             path = ''
@@ -49,9 +48,7 @@ class AgentPredictor:
 
                 path += str(choice)
 
-            predictions[path].append(agent_risk_tolerance)
-
-        print(json.dumps(predictions))
+            self.predictions[path].append(agent_risk_tolerance)
 
     def predict(self, predictions, user_path):
         """
