@@ -1,6 +1,7 @@
 import csv
-import pandas
+import json
 import numpy as np
+import pandas
 import random
 import statistics
 
@@ -11,7 +12,7 @@ DEFAULT_AGENT_MAX = 512
 
 SURVEY_SCORE_COLUMN = 'financialRisk_score (N)'
 DECISIONS = [
-'question20 (S)',
+	'question20 (S)',
 	'question21 (S)',
 	'question22 (S)',
 	'question23 (S)',
@@ -53,13 +54,12 @@ REPLACE_RESPONSES = {
 
 def categorize_decisions(decisions):
 	"""
-	Categorizes the activity decisions as 'a' or 'b' (used in preprocessing).
+	Categorizes the activity decisions (used in preprocessing).
 	"""
 	for idx, decision in enumerate(decisions):
-		if decision in REPLACE_RESPONSES['a']:
-			decisions[idx] = 'a'
-		elif decision in REPLACE_RESPONSES['b']:
-			decisions[idx] = 'b'
+		for replace_key, replace_values in REPLACE_RESPONSES.items():
+			if decision in replace_values:
+				decisions[idx] = replace_key
 
 	return decisions
 
@@ -77,9 +77,10 @@ def preprocess(file_name):
 			if col_name in KEEP_COLS:
 				new_columns[col_name] = idx
 
+		survey_score_col_idx = new_columns[SURVEY_SCORE_COLUMN]
 		data = []
 		for row in response_reader:
-			row = [row[x] for x in range(len(row)) if x in new_columns.values()]
+			row = [(int(row[idx]) if idx == survey_score_col_idx else row[idx]) for idx in range(len(row)) if idx in new_columns.values()]
 			row = categorize_decisions(row)
 			data.append(row)
 
@@ -110,10 +111,8 @@ def simulate(file_name='survey_responses.csv', agent_max=DEFAULT_AGENT_MAX):
 	survey_scores = map(int, data[SURVEY_SCORE_COLUMN].tolist())
 	neutral_state = statistics.median(survey_scores)
 
-	# TODO: Calculate which decision is 1 and which is 0
-
 	# Initialize decision points for all agents
-	decision_points = []
+	decision_points = {}
 	for decision in DECISIONS:
 		decision_points[decision] = initialize_decision_point(data, decision)
 
@@ -121,16 +120,19 @@ def simulate(file_name='survey_responses.csv', agent_max=DEFAULT_AGENT_MAX):
 	predictions = {path: [] for path in get_possible_paths(NUM_DECISION_POINTS)}
 	for _ in range(agent_max):
 		agent_risk_tolerance = random.randint(RISK_SCORE_MIN, RISK_SCORE_MAX + 1)
-		path = []
+		path = ''
 
-		for decision_point in decision_points:
+		for decision_point in decision_points.values():
 			base_rate, risk_sensitivity = decision_point
 			choice = calculate_risk_tolerance(
 				base_rate, risk_sensitivity, neutral_state, agent_risk_tolerance
 			)
-			path.append(choice)
+
+			path += str(choice)
 
 		predictions[path].append(agent_risk_tolerance)
+
+	print(json.dumps(predictions))
 
 def predict(predictions, user_path):
 	"""
@@ -157,8 +159,7 @@ def calculate_risk_tolerance(base_rate, risk_sensitivity, neutral_state, agent_r
 	risk_adjustment = agent_risk_factor * decision_risk_factor
 	probability_1 = base_rate + risk_adjustment
 
-	# TODO: Adjust this to return the value we want
-	return probability_1 < random.random()
+	return 1 if probability_1 < random.random() else 0
 
 def initialize_decision_point(data, column):
 	"""
@@ -167,12 +168,14 @@ def initialize_decision_point(data, column):
 	:param data_col: Column of preprocessed data (0 and 1 choices for one decision point)
 	:returns: The base rate and risk sensitivity for this decision point
 	"""
-	means = data.groupby(column).mean()
+	groups = data.groupby(column)[SURVEY_SCORE_COLUMN]
+	counts = groups.size()
+	means = groups.mean()
 
-	s_a = means['a']#avg(data)
-	s_b = means['b']
-	n_a = 1#count(data_col == a)
-	n_b = 1#count(data_col == b)
+	s_a = means['a'] if 'a' in means else 1
+	s_b = means['b'] if 'b' in means else 1
+	n_a = counts['a'] if 'a' in counts else 1
+	n_b = counts['b'] if 'b' in counts else 1
 
 	if s_a > s_b:
 		risk_sensitivity = s_a / s_b
