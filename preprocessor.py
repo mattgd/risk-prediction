@@ -77,5 +77,11 @@ def preprocess(file_name):
             data.append(row)
 
     headers = [col[0] for col in sorted(new_columns.items(), key = lambda x : x[1])]
+    data = pandas.DataFrame(data=data, columns=headers)
 
-    return pandas.DataFrame(data=data, columns=headers)
+    # Drop columns where all values are the same
+    nunique = data.apply(pandas.Series.nunique)
+    cols_to_drop = nunique[nunique == 1].index
+    data = data.drop(cols_to_drop, axis=1)
+
+    return data
