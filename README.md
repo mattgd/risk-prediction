@@ -1,2 +1,2 @@
-# risk-agents
-Risk agents implementation for Social Computing.
+# risk-prediction
+Risk prediction implementation for Social Computing.
