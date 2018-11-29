@@ -17,8 +17,8 @@ if __name__ == '__main__':
     # Generate prediction for specified user
     if len(sys.argv) > 1:
         user_path = pd.DataFrame([list(sys.argv[1])])
-        if len(user_path.columns) != 9:
-            sys.exit('Path requires 9 decision points')
+        if len(user_path.columns) != 10:
+            sys.exit('Path requires 10 decision points')
         p_ml = ml.MlPredictor(data)
         p_ag = ag.AgentPredictor(data)
         print("Linear Regression Prediction: " + str(p_ml.predict(user_path)[0]))

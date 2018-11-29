@@ -3,6 +3,7 @@ import pandas
 
 SURVEY_SCORE_COLUMN = 'financialRisk_score (N)'
 DECISIONS = [
+    'question19 (S)',
     'question20 (S)',
     'question21 (S)',
     'question22 (S)',
