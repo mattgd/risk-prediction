@@ -4,7 +4,9 @@ import preprocessor as pp
 import pandas as pd
 import numpy as np
 import sys
-from sklearn.metrics import r2_score as accuracy
+from sklearn.metrics import mean_squared_error
+import math
+from matplotlib import pyplot as plt
 
 RAW_DATA = 'survey_responses.csv' 
 
@@ -19,20 +21,21 @@ if __name__ == '__main__':
             sys.exit('Path requires 9 decision points')
         p_ml = ml.MlPredictor(data)
         p_ag = ag.AgentPredictor(data)
-        print("Machine Learning Prediction: " + str(p_ml.predict(user_path)[0]))
+        print("Linear Regression Prediction: " + str(p_ml.predict(user_path)[0]))
         print("Simulated Agent Prediction: " + str(p_ag.predict(user_path)[0]))
 
     # Repeatedly run comparison of predictors
     else:
-        ml_accuracies = []
-        ag_accuracies = []
-        ml_offness = []
-        ag_offness = []
+        ml_errors = []
+        ag_errors = []
         for i in range(10):
 
             # Split into test and train data
             msk = np.random.rand(len(data)) < .8
             train = data[msk]
+            while(any([len(np.unique(train[a]))==1 for a in train.columns])):
+                msk = np.random.rand(len(data)) < .8
+                train = data[msk]
             test = data[~msk]
             expected_ml = list(test.iloc[:,0])
             expected_ag = list(expected_ml)
@@ -49,27 +52,37 @@ if __name__ == '__main__':
                     actual_ag.pop(idx)
                     expected_ag.pop(idx)
 
-            # Calculate Accurcies
-            acc_ml = accuracy(expected_ml, actual_ml)
-            acc_ag = accuracy(expected_ag, actual_ag)
-            ml_accuracies.append(acc_ml)
-            ag_accuracies.append(acc_ag)
+            # Calculate errors
+            error_ml = math.sqrt(mean_squared_error(expected_ml, actual_ml))
+            error_ag = math.sqrt(mean_squared_error(expected_ag, actual_ag))
+            ml_errors.append(error_ml)
+            ag_errors.append(error_ag)
             off_ml = np.mean([abs(x[0]-x[1]) for x in zip(expected_ml, actual_ml)])
             off_ag = np.mean([abs(x[0]-x[1]) for x in zip(expected_ag, actual_ag)])
-            ml_offness.append(off_ml)
-            ag_offness.append(off_ag)
 
             # Report
-            print("Run " + str(i))
-            print("\tMachine Learning Accuracy: " + str(acc_ml))
-            print("\tSimulated Agent Accuracy: " + str(acc_ag))
-            print("\tMachine Learning Offness: " + str(off_ml))
-            print("\tSimulated Agent Offness: " + str(off_ag))
+            print("Run " + str(i+1))
+            print("\tLinear Regression Error: " + str(error_ml))
+            print("\tSimulated Agent Error: " + str(error_ag))
             print()
 
+        # Calculate averages
+        ml_errors.append(np.mean(ml_errors))
+        ag_errors.append(np.mean(ag_errors))
+
         print("Overall Report")
-        print("\tMachine Learning Accuracy: " + str(np.mean(ml_accuracies)))
-        print("\tSimulated Agent Accuracy: " + str(np.mean(ag_accuracies)))
-        print("\tMachine Learning Offness: " + str(np.mean(ml_offness)))
-        print("\tSimulated Agent Offness: " + str(np.mean(ag_offness)))
+        print("\tLinear Regression Error: " + str(ml_errors[-1]))
+        print("\tSimulated Agent Error: " + str(ag_errors[-1]))
         print()
+
+        x_pos = np.arange(len(ml_errors))
+        w = .3
+        ml_bars = plt.bar(x_pos-w/2, ml_errors, w, label='Linear Regression', color='cornflowerblue')
+        ag_bars = plt.bar(x_pos+w/2, ag_errors, w, label='Agent Simulation', color='salmon')
+        ml_bars[-1].set_color('darkblue')
+        ag_bars[-1].set_color('darkred')
+        plt.xticks(x_pos, ['Run ' + str(x+1) for x in range(10)] + ['Average'])
+        plt.ylabel('Root Mean Squared Error')
+        plt.legend()
+        plt.title('Prediction Errors')
+        plt.show()
